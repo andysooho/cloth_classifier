@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Classification Test</title>
+    <script>
+        function resizeImage(image, maxWidth, maxHeight) {
+            const canvas = document.createElement('canvas');
+            let width = image.width;
+            let height = image.height;
+
+            if (width > height) {
+                if (width > maxWidth) {
+                    height = Math.round(height * maxWidth / width);
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width = Math.round(width * maxHeight / height);
+                    height = maxHeight;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0, width, height);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        async function uploadImage() {
+            const fileInput = document.getElementById('imageInput');
+            const imageFile = fileInput.files[0];
+            const maxWidth = 800;
+            const maxHeight = 800;
+
+            const img = new Image();
+            img.src = URL.createObjectURL(imageFile);
+            img.onload = async function() {
+                const resizedImageDataURL = resizeImage(img, maxWidth, maxHeight);
+                const formData = new FormData();
+                formData.append('image', dataURLtoFile(resizedImageDataURL, imageFile.name));
+
+                const response = await fetch('http://127.0.0.1:4282/classify', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                const outputElement = document.getElementById('output');
+                outputElement.innerHTML = `Predicted class index: ${result.predicted_class_index}, Label: ${result.predicted_label}`;
+            };
+
+            const uploadedImageElement = document.getElementById('uploadedImage');
+            uploadedImageElement.src = img.src;
+            uploadedImageElement.style.display = 'block';
+
+        }
+
+        function dataURLtoFile(dataurl, filename) {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new File([u8arr], filename, {type: mime});
+        }
+    </script>
+</head>
+<body>
+    <h1>Image Classification Test</h1>
+    <p><h3>옷을 분류해봅니다.</h3>
+        일단은 초창기 버전이어서 간단하게만 분류함. <br>
+        사진 용량줄이기 기능 추가<br>
+        일단 옷 사진 분류기능은 이만큼만 할꺼고 나머지 기능 구현 되고 <br>시간되면 Yolo V8로 업그레이드 할거임<br>
+    </p>
+    <input type="file" id="imageInput" accept="image/*">
+    <button onclick="uploadImage()">Upload and Classify</button>
+    <p id="output"></p>
+    <img id="uploadedImage" src="#" alt="업로드된 이미지" style="display: none; max-width: 100%;">
+
+</body>
+</html>
